@@ -1,24 +1,52 @@
 import User from "../models/User.js";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import jsonwebtoken from "jsonwebtoken";
 import dotenv from "dotenv";
 
 const env = dotenv.config().parsed;
 
 const generateAccessToken = async (payload) => {
-    return jsonwebtoken.sign(
-        payload,
-        env.JWT_ACCESS_TOKEN_SECRET,
-        { expiresIn: env.JWT_ACCESS_TOKEN_EXPIRE }
-    )
+  return jsonwebtoken.sign(
+    payload,
+    env.JWT_ACCESS_TOKEN_SECRET,
+    { expiresIn: env.JWT_ACCESS_TOKEN_EXPIRE }
+  )
 }
 
 const generateRefreshToken = async (payload) => {
-    return jsonwebtoken.sign(
-        payload,
-        env.JWT_REFRESH_TOKEN_SECRET,
-        { expiresIn: env.JWT_REFRESH_TOKEN_EXPIRE }
-    )
+  return jsonwebtoken.sign(
+    payload,
+    env.JWT_REFRESH_TOKEN_SECRET,
+    { expiresIn: env.JWT_REFRESH_TOKEN_EXPIRE }
+  )
+}
+
+const isEmailExist = async (email) => {
+  const user = await User.findOne({ email })
+  if (!user) { return false }
+  return true
+}
+
+const checkEmail = async (req, res) => {
+  try {
+    // check if email exist
+    const email = req.body.email;
+    const emailExist = await isEmailExist(email);
+    if (emailExist) {
+      throw { code: 409, message: "EMAIL_EXIST" };
+    }
+
+    // send success response
+    res.status(200).json({
+      status: true,
+      message: 'EMAIL_NOT_EXIST'
+    })
+  } catch (err) {
+    res.status(err.code).json({
+      status: false,
+      message: err.message
+    })
+  }
 }
 
 const register = async (req, res) => {
@@ -45,7 +73,7 @@ const register = async (req, res) => {
     }
 
     // check if email exist
-    const emailExist = await User.findOne({ email: email });
+    const emailExist = await isEmailExist(email);
     if (emailExist) {
       throw { code: 409, message: "EMAIL_EXIST" };
     }
@@ -101,7 +129,7 @@ const login = async (req, res) => {
     // check if password match
     const isMatch = bcrypt.compareSync(password, user.password);
     if (!isMatch) {
-      throw { code: 428, message: "PASSWORD_WRONG" };
+      throw { code: 403, message: "WRONG_PASSWORD" };
     }
 
     // generate token
@@ -138,12 +166,12 @@ const login = async (req, res) => {
 const refreshToken = async (req, res) => {
   try {
     const reqRefreshToken = req.body.refreshToken;
-    
-    if (!reqRefreshToken) { throw {code: 428, message: "Refresh Token is required" } }
+
+    if (!reqRefreshToken) { throw { code: 428, message: "Refresh Token is required" } }
 
     const verify = jsonwebtoken.verify(reqRefreshToken, env.JWT_REFRESH_TOKEN_SECRET);
-    if (!verify) { throw {code: 428, message: "REFRESH_TOKEN_INVALID" } }
-    
+    if (!verify) { throw { code: 428, message: "REFRESH_TOKEN_INVALID" } }
+
     const payload = { _id: verify._id, role: verify.role }
     const accessToken = await generateAccessToken(payload)
     const refreshToken = await generateRefreshToken(payload)
@@ -165,4 +193,4 @@ const refreshToken = async (req, res) => {
   }
 };
 
-export { register, login, refreshToken };
+export { register, login, refreshToken, checkEmail };
