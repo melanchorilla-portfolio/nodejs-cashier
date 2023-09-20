@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import mongoosePaginate from 'mongoose-paginate-v2'
 
 const Schema = mongoose.Schema({
     fullname : {
@@ -32,5 +33,7 @@ const Schema = mongoose.Schema({
         currentTime: () => Math.floor(Date.now() / 1000)
     }
 })
+
+Schema.plugin(mongoosePaginate)
 
 export default mongoose.model('User', Schema)

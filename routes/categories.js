@@ -1,9 +1,10 @@
 import express from 'express';
 import { index, store } from "../controllers/CategoryController.js";
+import jwtAuth from '../middlewares/jwtAuth.js';
 
 var router = express.Router();
 
-router.get("/", index);
-router.post("/", store);
+router.get("/", jwtAuth(),index);
+router.post("/", jwtAuth(), store);
 
 export default router;
