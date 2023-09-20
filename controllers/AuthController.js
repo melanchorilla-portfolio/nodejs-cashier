@@ -2,7 +2,7 @@ import User from "../models/User.js";
 import bcrypt from "bcryptjs";
 import jsonwebtoken from "jsonwebtoken";
 import dotenv from "dotenv";
-import {isEmailExist, isEmailExistWithUserId} from "../libraries/isEmailExist.js";
+import { isEmailExist } from "../libraries/isEmailExist.js";
 
 const env = dotenv.config().parsed;
 
@@ -162,11 +162,9 @@ const refreshToken = async (req, res) => {
   try {
     const reqRefreshToken = req.body.refreshToken;
 
-    if (!reqRefreshToken) { throw { code: 428, message: "Refresh Token is required" } }
+    if (!reqRefreshToken) { throw { code: 428, message: "REFRESH_TOKEN_REQUIRED" } }
 
     const verify = jsonwebtoken.verify(reqRefreshToken, env.JWT_REFRESH_TOKEN_SECRET);
-    if (!verify) { throw { code: 428, message: "REFRESH_TOKEN_INVALID" } }
-
     const payload = { _id: verify._id, role: verify.role }
     const accessToken = await generateAccessToken(payload)
     const refreshToken = await generateRefreshToken(payload)
@@ -178,9 +176,12 @@ const refreshToken = async (req, res) => {
       refreshToken
     });
   } catch (err) {
-    if (!err.code) {
-      err.code = 500;
+    if (err.message == 'jwt_expired') {
+      err.message = 'REFRESH_TOKEN_EXPIRED'
+    } else {
+      err.message = 'REFRESH_TOKEN_INVALID'
     }
+
     return res.status(err.code).json({
       status: false,
       message: err.message,
